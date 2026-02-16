@@ -589,7 +589,7 @@ local function visit_node(root, level, lang_tree, headings, opt, stats)
   elseif node_name == 'word' or node_name == 'uppercase_name' then
     return text
   elseif node_name == 'note' then
-    return ('\\textbf{%s}'):format(text)
+    return ('*%s*'):format(text)
   elseif node_name == 'h1' or node_name == 'h2' or node_name == 'h3' then
     if is_noise(text, stats.noise_lines) then
       return '' -- Discard common "noise" lines.
@@ -614,11 +614,11 @@ local function visit_node(root, level, lang_tree, headings, opt, stats)
     --   )
     -- end
     if node_name == 'h1' then
-      return ('\\section{%s}'):format(trimmed)
+      return ('= %s'):format(trimmed)
     elseif node_name == 'h1' then
-      return ('\\subsection{%s}'):format(trimmed)
+      return ('== %s'):format(trimmed)
     else -- Has to be h3
-      return ('\\subsubsection{%s}'):format(trimmed)
+      return ('=== %s'):format(trimmed)
     end
   elseif node_name == 'heading' then
     return trimmed
@@ -697,7 +697,7 @@ local function visit_node(root, level, lang_tree, headings, opt, stats)
     if root:has_error() then
       return text
     end
-    local s = ('%s\\texttt{%s}'):format(ws(), trimmed)
+    local s = ('%s`%s`'):format(ws(), trimmed)
     -- TODO
     -- if opt.old and node_name == 'codespan' then
     --   s = fix_tab_after_conceal(s, node_text(root:next_sibling()))
@@ -710,21 +710,24 @@ local function visit_node(root, level, lang_tree, headings, opt, stats)
   -- elseif node_name == 'language' then
   --   language = node_text(root)
   --   return ''
-  -- elseif node_name == 'code' then -- Highlighted codeblock (child).
-  --   if is_blank(text) then
-  --     return ''
-  --   end
-  --   local code ---@type string
-  --   if language then
-  --     code = ('<pre><code class="language-%s">%s</code></pre>'):format(
-  --       language,
-  --       trim(trim_indent(text), 2)
-  --     )
-  --     language = nil
-  --   else
-  --     code = ('<pre>%s</pre>'):format(trim(trim_indent(text), 2))
-  --   end
-  --   return code
+  elseif node_name == 'code' then -- Highlighted codeblock (child).
+    -- TODO `text` contains the code in a tab-separated line
+    if is_blank(text) then
+      return ''
+    end
+    local code ---@type string
+    if language then
+      code = ([[```%s
+      %s
+      ```]]):format(
+        language,
+        trim(trim_indent(text), 2)
+      )
+      language = nil
+    else
+      code = ('```%s```'):format(trim(trim_indent(text), 2))
+    end
+    return code
   -- elseif node_name == 'tag' then -- anchor, h4 pseudo-heading
   --   if root:has_error() then
   --     return text
@@ -763,8 +766,8 @@ local function visit_node(root, level, lang_tree, headings, opt, stats)
   --     return string.format('%s</span>', s)
   --   end
   --   return s .. (h4 and '<br>' or '') -- HACK: <br> avoids h4 pseudo-heading mushing with text.
-  -- elseif node_name == 'delimiter' or node_name == 'modeline' then
-  --   return ''
+  elseif node_name == 'delimiter' or node_name == 'modeline' then
+    return ''
   -- elseif node_name == 'ERROR' then
   --   if ignore_parse_error(opt.fname, trimmed) then
   --     return text
@@ -918,18 +921,7 @@ local function gen_one(fname, text, to_fname, old, commit)
   local headings = {} -- Headings (for ToC). 2-dimensional: h1 contains h2/h3.
   local title = to_titlecase(basename_noext(fname))
 
-  local latex = ([[\documentclass{book}
-
-\title{Neovim user documentation}
-\author{Neovim contributors}
-\date{\today}
-
-\begin{document}
-
-\maketitle
-
-]]):format(title)
-
+  local typst = ([[= Neovim user documentation: %s]]):format(title)
 
   local main = ''
   for _, tree in ipairs(lang_tree:trees()) do
@@ -946,12 +938,12 @@ local function gen_one(fname, text, to_fname, old, commit)
       )
   end
 
-  local footer = '\\end{document}'
-  latex = ('%s%s\n\n%s'):format(latex, main, footer)
+  local footer = ''
+  typst = ('%s%s\n\n%s'):format(typst, main, footer)
 
   vim.cmd('q!')
   lang_tree:destroy()
-  return latex, stats
+  return typst, stats
 end
 
 --- Generates a JSON map of tags to URL-encoded `filename#anchor` locations.
@@ -1104,7 +1096,7 @@ function M.gen(help_dir, to_dir, include, commit, parser_path)
     -- "foo.txt"
     local helpfile = vim.fs.basename(f)
     -- "to/dir/foo.html"
-    local to_fname = ('%s/%s'):format(to_dir, get_helppage(helpfile, true):gsub('.html', '.tex'))
+    local to_fname = ('%s/%s'):format(to_dir, get_helppage(helpfile, true):gsub('.html', '.typ'))
     local html, stats = gen_one(f, nil, to_fname, not new_layout[helpfile], commit or '?')
     tofile(to_fname, html)
     print(
