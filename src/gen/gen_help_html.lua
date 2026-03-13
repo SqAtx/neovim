@@ -1096,9 +1096,9 @@ function M.gen(help_dir, to_dir, include, commit, parser_path)
     -- "foo.txt"
     local helpfile = vim.fs.basename(f)
     -- "to/dir/foo.html"
-    local to_fname = ('%s/%s'):format(to_dir, get_helppage(helpfile, true):gsub('.html', '.typ'))
-    local html, stats = gen_one(f, nil, to_fname, not new_layout[helpfile], commit or '?')
-    tofile(to_fname, html)
+    local to_fname = ('%s/%s'):format(to_dir, get_helppage(helpfile, true):gsub('.html', '.json'))
+    local json, stats = gen_one(f, nil, to_fname, not new_layout[helpfile], commit or '?')
+    tofile(to_fname, json)
     print(
       ('generated (%-2s errors): %-15s => %s'):format(
         #stats.parse_errors,
