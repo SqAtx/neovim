@@ -31,10 +31,40 @@ local function parse_buf(fname, text)
   return lang_tree, buf
 end
 
+local function tofile(fname, text)
+  local f = io.open(fname, 'w')
+  if not f then
+    error(('failed to write: %s'):format(f))
+  else
+    f:write(text)
+    f:close()
+  end
+end
+
+---@param node TSNode
+---@param buf integer
+---@return table
+local function tsnode_to_table(node, buf)
+  -- TODO print children
+  -- TODO Do we want to only print the text of certain types? Like not help_file?
+  return {
+    type = node:type(),
+    range = node:range(false),
+    text = vim.treesitter.get_node_text(node, buf),
+  }
+end
+
 function M.main()
   -- print('Hello, World!\n')
   local lang_tree, buf = parse_buf('usr_01.txt', nil)
   print('buf ' .. buf)
+
+  -- TODO why can there be several trees?
+  for nb, tree in ipairs(lang_tree:trees()) do
+    print(nb)
+    local t = tsnode_to_table(tree:root(), buf)
+    tofile(nb .. '.json', vim.json.encode(t))
+  end
 
 end
 
