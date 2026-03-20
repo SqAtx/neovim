@@ -1,5 +1,6 @@
 --- nvim -V1 -es --clean +"lua require('src.gen.gen_help_html').gen('./one_doc', './pdf_docs')" +q && typst compile pdf_docs/usr_01.typ
 --- nvim -V1 -es --clean +"lua require('doc_to_json').main()" +q
+--- nvim -V1 -es --clean +"lua require('doc_to_json').main()" +q && echo "" && jq . 1.json
 
 local M = {}
 
@@ -45,13 +46,23 @@ end
 ---@param buf integer
 ---@return table
 local function tsnode_to_table(node, buf)
-  -- TODO print children
-  -- TODO Do we want to only print the text of certain types? Like not help_file?
-  return {
+  local t = {
+    range = {node:range(false)},
     type = node:type(),
-    range = node:range(false),
-    text = vim.treesitter.get_node_text(node, buf),
   }
+
+  if node:child_count() > 0 then
+    t.children = {}
+    for child, _ in node:iter_children() do
+      if child:named() then
+        table.insert(t.children, tsnode_to_table(child, buf))
+      end
+    end
+  else
+    t.text = vim.treesitter.get_node_text(node, buf)
+  end
+
+  return t
 end
 
 function M.main()
